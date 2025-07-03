@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import UserMenu from "@/components/UserMenu";
 import { Menu, X } from "lucide-react";
+import logo from '../../assets/logo.png';
 
 const Navbar = () => {
   const { currentUser } = useAuth();
@@ -18,7 +19,7 @@ const Navbar = () => {
         <div className="flex items-center justify-between">
           <Link to="/" className="flex items-center space-x-2">
             <img 
-              src="#" 
+              src= {logo} 
               alt="Fruitenium Technologies" 
               className="h-10 w-10"
             />
