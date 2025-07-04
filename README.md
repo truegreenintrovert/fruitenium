@@ -36,30 +36,79 @@ A modern, responsive frontend web application for Fruitenium Technologies Pvt Lt
 - **Tailwind CSS**
 - **Framer Motion**
 
----
+```
 
 ## Project Structure
 
-fruitenium/
+fruitenium_webapp/
 │
-├── public/                 # Static assets (favicon, index.html, etc.)
-│
+├── public/                        # Static assets
+│   └── .htaccess
+├── assets/ 
+│   └── logo.png
 ├── src/
-│   ├── components/         # Reusable React components
-│   ├── pages/              # Page-level React components
-│   ├── types/              # TypeScript type definitions
-│   ├── App.tsx             # Main app component
-│   └── main.tsx            # React entry point
+│   ├── assets/
+│   │   └── logo.png
+│   ├── components/
+│   │   ├── AdminRoute.jsx
+│   │   ├── Footer.jsx
+│   │   ├── Layout.jsx
+│   │   ├── Navbar.jsx
+│   │   ├── ProtectedRoute.jsx
+│   │   ├── UserMenu.jsx
+│   │   └── ui/
+│   │       ├── button.jsx
+│   │       ├── card.jsx
+│   │       ├── dropdown-menu.jsx
+│   │       ├── toaster.jsx
+│   │       ├── toast.jsx
+│   │       └── ... (other UI components)
+│   ├── contexts/
+│   │   └── AuthContext.jsx
+│   ├── lib/
+│   │   ├── api.js
+│   │   ├── supabase.js
+│   │   └── utils.js
+│   ├── pages/
+│   │   ├── AboutUs.jsx
+│   │   ├── CancellationPolicy.jsx
+│   │   ├── Checkout.jsx
+│   │   ├── Contact.jsx
+│   │   ├── Dashboard.jsx
+│   │   ├── Home.jsx
+│   │   ├── Login.jsx
+│   │   ├── OrderHistory.jsx
+│   │   ├── PrivacyPolicy.jsx
+│   │   ├── ProductDetail.jsx
+│   │   ├── Products.jsx
+│   │   ├── Profile.jsx
+│   │   ├── RefundPolicy.jsx
+│   │   ├── Register.jsx
+│   │   ├── Terms.jsx
+│   │   ├── admin/
+│   │   │   ├── Dashboard.jsx
+│   │   │   └── Products.jsx
+│   │   ├── auth/
+│   │   │   ├── callback.js
+│   │   └── ... (other pages)
+│   │
+│   ├── App.jsx
+│   ├── index.css
+│   └── main.jsx
 │
-├── .nvmrc                  # Node.js version (20.19.1)
-├── package.json            # Project scripts and dependencies
-├── tsconfig.json           # TypeScript configuration
-├── tailwind.config.js      # Tailwind CSS configuration
-├── vite.config.ts          # Vite configuration
-└── README.md
+├── .gitignore
+├── .nvmrc                         # Node.js version (20.19.1)
+├── package.lock.json
+├── index.html
+├── LICENSE
+├── package.json                   # Project scripts and dependencies
+├── tsconfig.json                  # TypeScript configuration 
+├── tailwind.config.js             # Tailwind CSS configuration
+├── vite.config.ts                 # Vite configuration
+└── README.md                      # Project documentation
 
 
----
+```
 
 ## Getting Started
 
