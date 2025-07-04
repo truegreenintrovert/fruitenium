@@ -36,7 +36,7 @@ A modern, responsive frontend web application for Fruitenium Technologies Pvt Lt
 - **Tailwind CSS**
 - **Framer Motion**
 
----
+```
 
 ## Project Structure
 
@@ -59,7 +59,7 @@ fruitenium/
 └── README.md
 
 
----
+```
 
 ## Getting Started
 
