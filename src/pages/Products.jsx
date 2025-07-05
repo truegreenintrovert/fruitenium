@@ -1,88 +1,42 @@
-
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase"; // Make sure this is set up!
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 
-const products = [
-  {
-    id: 1,
-    name: "Basic Website Package",
-    description: "Perfect for small businesses and startups",
-    price: "RS 8000",
-    features: [
-      "5 Pages Website",
-      "Mobile Responsive",
-      "Contact Form",
-      "Basic SEO",
-      "3 Rounds of Revisions"
-    ]
-  },
-  {
-    id: 2,
-    name: "Professional Website Package",
-    description: "Ideal for growing businesses",
-    price: "RS 12000",
-    features: [
-      "10 Pages Website",
-      "Mobile Responsive",
-      "Advanced SEO",
-      "Content Management System",
-      "5 Rounds of Revisions",
-      "Social Media Integration"
-    ]
-  },
-  {
-    id: 3,
-    name: "E-commerce Package",
-    description: "Complete online store solution",
-    price: "RS 14000",
-    features: [
-      "Unlimited Products",
-      "Payment Gateway Integration",
-      "Inventory Management",
-      "Order Management",
-      "Customer Dashboard",
-      "Advanced Analytics"
-    ]
-  },
-  {
-    id: 4,
-    name: "Custom Software Development",
-    description: "Tailored software solutions",
-    price: "Custom Quote",
-    features: [
-      "Custom Requirements Analysis",
-      "Scalable Architecture",
-      "Database Design",
-      "API Integration",
-      "Testing & QA",
-      "Maintenance Support"
-    ]
-  },
-  {
-    id: 5,
-    name: "Mobile App Development",
-    description: "Native and cross-platform apps",
-    price: "Starting at RS 12,000",
-    features: [
-      "iOS & Android Apps",
-      "User-friendly Interface",
-      "Push Notifications",
-      "Analytics Integration",
-      "App Store Submission",
-      "Regular Updates"
-    ]
-  }
-];
-
 const Products = () => {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("*");
+      if (error) {
+        // Optionally handle error with toast
+        setProducts([]);
+      } else {
+        setProducts(data);
+      }
+      setLoading(false);
+    };
+    fetchProducts();
+  }, []);
 
   const handleOrder = (productId) => {
     navigate(`/checkout/${productId}`);
   };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-12 flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-12">
@@ -106,9 +60,11 @@ const Products = () => {
                   <p className="text-gray-600">{product.description}</p>
                 </CardHeader>
                 <CardContent className="flex-grow">
-                  <p className="text-3xl font-bold mb-6">{product.price}</p>
+                  <p className="text-3xl font-bold mb-6">{typeof product.price === "string" && isNaN(product.price)
+                                  ? product.price
+                                   : "₹ " + product.price}</p>
                   <ul className="space-y-2">
-                    {product.features.map((feature, index) => (
+                    {product.features && product.features.map((feature, index) => (
                       <li key={index} className="flex items-center">
                         <svg
                           className="h-5 w-5 text-green-500 mr-2"

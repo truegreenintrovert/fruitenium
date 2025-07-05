@@ -1,10 +1,11 @@
-
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { api } from "@/lib/api";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 import { 
   Clock, 
   CheckCircle2, 
@@ -14,6 +15,8 @@ import {
   Calendar,
   IndianRupee
 } from "lucide-react";
+
+// (Do NOT declare navigate outside the component)
 
 const OrderStatus = {
   PENDING: "pending",
@@ -40,19 +43,28 @@ const StatusIcon = ({ status }) => {
   }
 };
 
-const OrderHistory = () => {
+const OrderHistory = ({ userId: propUserId }) => {
   const [orders, setOrders] = useState([]);
+  const { currentUser } = useAuth();
+  const userId = propUserId || currentUser?.id;
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const navigate = useNavigate(); // <-- Correct: must be inside component
 
   useEffect(() => {
     fetchOrders();
-  }, []);
+    // eslint-disable-next-line
+  }, [userId]);
 
   const fetchOrders = async () => {
     try {
-      const response = await api.getUserOrders();
-      setOrders(response.data);
+      let { data, error } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      setOrders(data);
     } catch (error) {
       toast({
         variant: "destructive",
@@ -107,7 +119,7 @@ const OrderHistory = () => {
               <h3 className="text-xl font-semibold text-gray-600">No Orders Yet</h3>
               <p className="text-gray-500 mt-2">Your order history will appear here</p>
               <Button className="mt-6" onClick={() => navigate("/products")}>
-                Browse Products
+                Browse Services
               </Button>
             </CardContent>
           </Card>

@@ -1,17 +1,29 @@
 
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import UserMenu from "@/components/UserMenu";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 import { Menu, X } from "lucide-react";
 import logo from '../../assets/logo.png';
 
 const Navbar = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const navigate = useNavigate();
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
 
   return (
     <nav className="border-b">
@@ -19,7 +31,7 @@ const Navbar = () => {
         <div className="flex items-center justify-between">
           <Link to="/" className="flex items-center space-x-2">
             <img 
-              src= {logo} 
+              src={logo} 
               alt="Fruitenium Technologies" 
               className="h-10 w-10"
             />
@@ -53,7 +65,27 @@ const Navbar = () => {
               </Link>
             )}
             {currentUser ? (
-              <UserMenu />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Avatar className="cursor-pointer">
+                    <AvatarImage src={currentUser.photoURL || undefined} />
+                    <AvatarFallback>
+                      {currentUser.email?.charAt(0).toUpperCase() || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => navigate("/profile")}>
+                    Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/dashboard")}>
+                    Dashboard
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleLogout}>
+                    Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : (
               <div className="flex items-center space-x-4">
                 <Link to="/login">
@@ -110,6 +142,16 @@ const Navbar = () => {
                   >
                     Dashboard
                   </Link>
+                  <Button 
+                    variant="outline" 
+                    className="mt-4 w-full"
+                    onClick={() => {
+                      handleLogout();
+                      toggleMenu();
+                    }}
+                  >
+                    Logout
+                  </Button>
                 </div>
               ) : (
                 <div className="flex flex-col space-y-2 pt-4 border-t">

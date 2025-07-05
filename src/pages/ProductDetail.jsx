@@ -16,25 +16,29 @@ const ProductDetail = () => {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchProduct = async () => {
-      try {
-        const response = await api.getProduct(id);
-        setProduct(response.data);
-      } catch (error) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to load product details.",
-        });
-        navigate("/products");
-      } finally {
-        setLoading(false);
-      }
-    };
+  // In ProductDetail.jsx (replace api.getProduct with supabase call)
+useEffect(() => {
+  const fetchProduct = async () => {
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (error || !data) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load product details.",
+      });
+      navigate("/products");
+    } else {
+      setProduct(data);
+    }
+    setLoading(false);
+  };
+  fetchProduct();
+}, [id, navigate, toast]);
 
-    fetchProduct();
-  }, [id, navigate, toast]);
 
   const handleOrder = () => {
     if (!currentUser) {

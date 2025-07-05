@@ -1,8 +1,6 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/components/ui/use-toast';
-
 
 const AuthContext = createContext();
 
@@ -16,7 +14,6 @@ export function AuthProvider({ children }) {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check active sessions and sets the user
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
         await fetchUserProfile(session.user);
@@ -26,7 +23,6 @@ export function AuthProvider({ children }) {
       setLoading(false);
     });
 
-    // Listen for changes on auth state
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         await fetchUserProfile(session.user);
@@ -48,7 +44,6 @@ export function AuthProvider({ children }) {
 
       if (error) {
         if (error.code === 'PGRST116') {
-          // Profile doesn't exist, create one
           const { data: newProfile, error: createError } = await supabase
             .from('profiles')
             .insert([{
@@ -59,7 +54,6 @@ export function AuthProvider({ children }) {
             }])
             .select()
             .single();
-
           if (createError) throw createError;
           setCurrentUser({ ...user, ...newProfile });
           return;
@@ -94,13 +88,12 @@ export function AuthProvider({ children }) {
       if (error) throw error;
 
       // Update auth metadata if name is changed
-      if (userData.full_name) {
-        const { error: updateError } = await supabase.auth.updateUser({
-          data: { full_name: userData.full_name }
-        });
-
-        if (updateError) throw updateError;
-      }
+     // if (userData.full_name) {
+      //  const { error: updateError } = await supabase.auth.updateUser({
+      //    data: { full_name: userData.full_name }
+     //   });
+     //   if (updateError) throw updateError;
+     // } 
 
       setCurrentUser(prev => ({
         ...prev,
@@ -240,7 +233,7 @@ export function AuthProvider({ children }) {
     signup,
     login,
     logout,
-    updateProfile,
+    updateProfile, // <-- This is the only profile updater you need
     signInWithGoogle,
     isAdmin
   };

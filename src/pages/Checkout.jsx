@@ -1,81 +1,19 @@
-
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/lib/supabase";
 
-const products = {
-  1: {
-    name: "Basic Website Package",
-    price: 999,
-    description: "Perfect for small businesses and startups",
-    features: [
-      "5 Pages Website",
-      "Mobile Responsive",
-      "Contact Form",
-      "Basic SEO",
-      "3 Rounds of Revisions"
-    ]
-  },
-  2: {
-    name: "Professional Website Package",
-    price: 2499,
-    description: "Ideal for growing businesses",
-    features: [
-      "10 Pages Website",
-      "Mobile Responsive",
-      "Advanced SEO",
-      "Content Management System",
-      "5 Rounds of Revisions",
-      "Social Media Integration"
-    ]
-  },
-  3: {
-    name: "E-commerce Package",
-    price: 4999,
-    description: "Complete online store solution",
-    features: [
-      "Unlimited Products",
-      "Payment Gateway Integration",
-      "Inventory Management",
-      "Order Management",
-      "Customer Dashboard",
-      "Advanced Analytics"
-    ]
-  },
-  4: {
-    name: "Custom Software Development",
-    price: 9999,
-    description: "Tailored software solutions",
-    features: [
-      "Custom Requirements Analysis",
-      "Scalable Architecture",
-      "Database Design",
-      "API Integration",
-      "Testing & QA",
-      "Maintenance Support"
-    ]
-  },
-  5: {
-    name: "Mobile App Development",
-    price: 9999,
-    description: "Native and cross-platform apps",
-    features: [
-      "iOS & Android Apps",
-      "User-friendly Interface",
-      "Push Notifications",
-      "Analytics Integration",
-      "App Store Submission",
-      "Regular Updates"
-    ]
-  }
-};
+const EDGE_BASE = import.meta.env.VITE_SUPABASE_EDGE_URL;
+const CREATE_ORDER_URL = `${EDGE_BASE}/create-razorpay-order`;
+const VERIFY_PAYMENT_URL = `${EDGE_BASE}/verify-razorpay-payment`;
 
 const loadRazorpay = () => {
   return new Promise((resolve) => {
+    if (window.Razorpay) return resolve(true);
     const script = document.createElement("script");
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
     script.onload = () => resolve(true);
@@ -90,15 +28,33 @@ const Checkout = () => {
   const { currentUser } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [product, setProduct] = useState(null);
 
-  const product = products[productId];
+  // Fetch product from Supabase
+  useEffect(() => {
+    const fetchProduct = async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .eq("id", productId)
+        .single();
+      if (error || !data) {
+        toast({
+          variant: "destructive",
+          title: "Product not found",
+          description: "Returning to product list.",
+        });
+        navigate("/products");
+        return;
+      }
+      setProduct(data);
+    };
+    fetchProduct();
+    // eslint-disable-next-line
+  }, [productId]);
 
-  if (!product) {
-    navigate("/products");
-    return null;
-  }
-
-  const handlePayment = async () => {
+  // Handle "must be logged in"
+  useEffect(() => {
     if (!currentUser) {
       toast({
         variant: "destructive",
@@ -106,80 +62,89 @@ const Checkout = () => {
         description: "You need to be logged in to make a purchase.",
       });
       navigate("/login");
-      return;
     }
+    // eslint-disable-next-line
+  }, [currentUser]);
 
+  if (!product) {
+    return (
+      <div className="container mx-auto px-4 py-8 flex justify-center items-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // Razorpay payment handler
+  const handlePayment = async () => {
     setLoading(true);
-
     try {
-      const res = await loadRazorpay();
-
-      if (!res) {
+      const sdkLoaded = await loadRazorpay();
+      if (!sdkLoaded) {
         toast({
           variant: "destructive",
           title: "Razorpay SDK failed to load",
           description: "Please check your internet connection.",
         });
+        setLoading(false);
         return;
       }
+        // --- get the current user access token for auth header ---
+        const { data: { session } } = await supabase.auth.getSession();
+        const accessToken = session?.access_token;
 
-      // Create order on the backend
-      const response = await fetch(`${process.env.BACKEND_URL}/api/orders`, {
-        method: 'POST',
+      // 1. Create order with Supabase Edge Function
+      const orderRes = await fetch(CREATE_ORDER_URL, {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${currentUser.token}`
-        },
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${accessToken}`
+          },
         body: JSON.stringify({
-          productId,
-          amount: product.price
-        })
+          amount: product.price, // amount in rupees
+          productId: product.id,
+          userId: currentUser.id,
+        }),
       });
+      const orderData = await orderRes.json();
 
-      const data = await response.json();
-
-      if (data.status !== 'success') {
-        throw new Error(data.message);
+      if (!orderData?.order_id) {
+        throw new Error(orderData?.error || "Could not create order");
       }
 
+      // 2. Launch Razorpay checkout
       const options = {
-        key: data.data.key,
-        amount: data.data.amount * 100,
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount: product.price * 100,
         currency: "INR",
         name: "Fruitenium Technologies",
         description: `Payment for ${product.name}`,
-        order_id: data.data.razorpayOrderId,
+        order_id: orderData.order_id,
         handler: async function (response) {
-          try {
-            const verifyResponse = await fetch(`${process.env.BACKEND_URL}/api/orders/verify`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${currentUser.token}`
-              },
-              body: JSON.stringify({
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_signature: response.razorpay_signature
-              })
+          // 3. Verify payment with Supabase Edge Function
+          const verifyRes = await fetch(VERIFY_PAYMENT_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_signature: response.razorpay_signature,
+              userId: currentUser.id,
+              productId: product.id,
+              amount: product.price,
+            }),
+          });
+          const verifyData = await verifyRes.json();
+          if (verifyData.success) {
+            toast({
+              title: "Payment successful!",
+              description: "Your order has been placed.",
             });
-
-            const verifyData = await verifyResponse.json();
-
-            if (verifyData.status === 'success') {
-              toast({
-                title: "Payment successful!",
-                description: "Your order has been placed successfully.",
-              });
-              navigate("/dashboard");
-            } else {
-              throw new Error(verifyData.message);
-            }
-          } catch (error) {
+            navigate("/dashboard");
+          } else {
             toast({
               variant: "destructive",
-              title: "Error verifying payment",
-              description: error.message,
+              title: "Payment verification failed",
+              description: verifyData?.error || "Payment could not be verified.",
             });
           }
         },
@@ -187,9 +152,7 @@ const Checkout = () => {
           name: currentUser.displayName,
           email: currentUser.email,
         },
-        theme: {
-          color: "#4F46E5",
-        },
+        theme: { color: "#4F46E5" },
       };
 
       const paymentObject = new window.Razorpay(options);
@@ -213,7 +176,6 @@ const Checkout = () => {
         transition={{ duration: 0.5 }}
       >
         <h1 className="text-3xl font-bold mb-8">Checkout</h1>
-
         <div className="grid md:grid-cols-2 gap-8">
           <Card>
             <CardHeader>
@@ -228,7 +190,7 @@ const Checkout = () => {
                 <div>
                   <h4 className="font-medium">Features:</h4>
                   <ul className="list-disc pl-5 mt-2 space-y-1">
-                    {product.features.map((feature, index) => (
+                    {product.features?.map((feature, index) => (
                       <li key={index} className="text-gray-600">{feature}</li>
                     ))}
                   </ul>
@@ -242,7 +204,6 @@ const Checkout = () => {
               </div>
             </CardContent>
           </Card>
-
           <Card>
             <CardHeader>
               <CardTitle>Payment Details</CardTitle>
