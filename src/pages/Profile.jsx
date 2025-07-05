@@ -1,33 +1,29 @@
-
 import React, { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { motion } from "framer-motion";
-import { api } from "@/lib/api";
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  Building2, 
-  Shield, 
-  Clock,
+import {
+  User,
+  Mail,
+  Phone,
+  Building2,
+  Shield,
   FileText,
   Bell,
-  Settings,
   Key
 } from "lucide-react";
 
 const Profile = () => {
-  const { currentUser, updateUserProfile } = useAuth();
+  const { currentUser, updateProfile } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("personal");
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    name: currentUser?.displayName || "",
-    email: currentUser?.email || "",
+    id: currentUser?.id || "",
+    full_name: currentUser?.full_name || "",
     phone: currentUser?.phone || "",
     company: currentUser?.company || "",
     address: currentUser?.address || "",
@@ -41,8 +37,8 @@ const Profile = () => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    if (type === 'checkbox') {
-      setFormData(prev => ({
+    if (type === "checkbox") {
+      setFormData((prev) => ({
         ...prev,
         notifications: {
           ...prev.notifications,
@@ -50,7 +46,7 @@ const Profile = () => {
         }
       }));
     } else {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         [name]: value
       }));
@@ -60,42 +56,34 @@ const Profile = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-
+    console.log("START: Submitting formData", formData);
     try {
-      await api.updateProfile(formData);
-      await updateUserProfile(formData);
-      
+      const result = await updateProfile(formData); // Only use context updater!
+       console.log("Profile update returned:", result);
       toast({
         title: "Profile updated",
         description: "Your profile has been updated successfully.",
       });
-      
       setEditing(false);
     } catch (error) {
+      console.error("Profile update error:", error);
       toast({
         variant: "destructive",
         title: "Error",
         description: "Failed to update profile. Please try again.",
       });
+      setEditing(false);
     } finally {
       setLoading(false);
+       console.log("FINALLY: setLoading(false)");
     }
   };
 
   const handlePasswordChange = async () => {
-    try {
-      await api.sendPasswordResetEmail(currentUser.email);
-      toast({
-        title: "Password reset email sent",
-        description: "Please check your email to reset your password.",
-      });
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to send password reset email.",
-      });
-    }
+    toast({
+      title: "Password reset is not implemented in this demo.",
+      description: "Please contact support for password reset.",
+    });
   };
 
   return (
@@ -108,9 +96,7 @@ const Profile = () => {
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold">Profile</h1>
           {!editing && (
-            <Button onClick={() => setEditing(true)}>
-              Edit Profile
-            </Button>
+            <Button onClick={() => setEditing(true)}>Edit Profile</Button>
           )}
         </div>
 
@@ -123,22 +109,23 @@ const Profile = () => {
                   {currentUser?.photoURL ? (
                     <img
                       src={currentUser.photoURL}
-                      alt={currentUser.displayName}
+                      alt={currentUser.full_name}
                       className="w-full h-full rounded-full object-cover"
                     />
                   ) : (
                     <User className="w-12 h-12 text-primary" />
                   )}
                 </div>
-                <h2 className="text-xl font-semibold">{currentUser?.displayName}</h2>
+                <h2 className="text-xl font-semibold">{currentUser?.full_name}</h2>
                 <p className="text-gray-500">{currentUser?.email}</p>
               </div>
-
               <div className="mt-6 space-y-2">
                 <button
                   onClick={() => setActiveTab("personal")}
                   className={`w-full text-left px-4 py-2 rounded-lg flex items-center space-x-2 ${
-                    activeTab === "personal" ? "bg-primary/10 text-primary" : "hover:bg-gray-100"
+                    activeTab === "personal"
+                      ? "bg-primary/10 text-primary"
+                      : "hover:bg-gray-100"
                   }`}
                 >
                   <User className="w-4 h-4" />
@@ -147,7 +134,9 @@ const Profile = () => {
                 <button
                   onClick={() => setActiveTab("security")}
                   className={`w-full text-left px-4 py-2 rounded-lg flex items-center space-x-2 ${
-                    activeTab === "security" ? "bg-primary/10 text-primary" : "hover:bg-gray-100"
+                    activeTab === "security"
+                      ? "bg-primary/10 text-primary"
+                      : "hover:bg-gray-100"
                   }`}
                 >
                   <Shield className="w-4 h-4" />
@@ -156,7 +145,9 @@ const Profile = () => {
                 <button
                   onClick={() => setActiveTab("notifications")}
                   className={`w-full text-left px-4 py-2 rounded-lg flex items-center space-x-2 ${
-                    activeTab === "notifications" ? "bg-primary/10 text-primary" : "hover:bg-gray-100"
+                    activeTab === "notifications"
+                      ? "bg-primary/10 text-primary"
+                      : "hover:bg-gray-100"
                   }`}
                 >
                   <Bell className="w-4 h-4" />
@@ -165,7 +156,9 @@ const Profile = () => {
                 <button
                   onClick={() => setActiveTab("billing")}
                   className={`w-full text-left px-4 py-2 rounded-lg flex items-center space-x-2 ${
-                    activeTab === "billing" ? "bg-primary/10 text-primary" : "hover:bg-gray-100"
+                    activeTab === "billing"
+                      ? "bg-primary/10 text-primary"
+                      : "hover:bg-gray-100"
                   }`}
                 >
                   <FileText className="w-4 h-4" />
@@ -186,28 +179,22 @@ const Profile = () => {
                   {editing ? (
                     <form onSubmit={handleSubmit} className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Name</label>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Full Name
+                        </label>
                         <input
                           type="text"
-                          name="name"
-                          value={formData.name}
+                          name="full_name"
+                          value={formData.full_name}
                           onChange={handleChange}
                           className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                         />
                       </div>
+                      {/* No email input */}
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Email</label>
-                        <input
-                          type="email"
-                          name="email"
-                          value={formData.email}
-                          onChange={handleChange}
-                          disabled
-                          className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Phone</label>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Phone
+                        </label>
                         <input
                           type="tel"
                           name="phone"
@@ -217,7 +204,9 @@ const Profile = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Company</label>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Company
+                        </label>
                         <input
                           type="text"
                           name="company"
@@ -227,7 +216,9 @@ const Profile = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Address</label>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Address
+                        </label>
                         <textarea
                           name="address"
                           value={formData.address}
@@ -237,7 +228,9 @@ const Profile = () => {
                         ></textarea>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Bio</label>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Bio
+                        </label>
                         <textarea
                           name="bio"
                           value={formData.bio}
@@ -265,8 +258,8 @@ const Profile = () => {
                       <div className="flex items-center">
                         <User className="w-5 h-5 text-gray-400 mr-3" />
                         <div>
-                          <p className="text-sm font-medium text-gray-500">Name</p>
-                          <p className="mt-1">{currentUser?.displayName}</p>
+                          <p className="text-sm font-medium text-gray-500">Full Name</p>
+                          <p className="mt-1">{currentUser?.full_name}</p>
                         </div>
                       </div>
                       <div className="flex items-center">
@@ -292,7 +285,9 @@ const Profile = () => {
                       </div>
                       {currentUser?.address && (
                         <div className="pt-4 border-t">
-                          <p className="text-sm font-medium text-gray-500">Address</p>
+                          <p className="text-sm font-medium text-gray-500">
+                            Address
+                          </p>
                           <p className="mt-1">{currentUser.address}</p>
                         </div>
                       )}
@@ -329,7 +324,9 @@ const Profile = () => {
                     </Button>
                   </div>
                   <div className="pt-6 border-t">
-                    <h3 className="text-lg font-medium">Two-Factor Authentication</h3>
+                    <h3 className="text-lg font-medium">
+                      Two-Factor Authentication
+                    </h3>
                     <p className="text-gray-500 mt-1">
                       Add an extra layer of security to your account
                     </p>
@@ -411,9 +408,7 @@ const Profile = () => {
                       <p className="text-gray-500 mt-1">
                         Manage your payment methods and billing details
                       </p>
-                      <Button className="mt-4">
-                        Add Payment Method
-                      </Button>
+                      <Button className="mt-4">Add Payment Method</Button>
                     </div>
                     <div className="pt-6 border-t">
                       <h3 className="text-lg font-medium">Billing History</h3>
@@ -421,15 +416,24 @@ const Profile = () => {
                         {currentUser?.orders?.length > 0 ? (
                           <div className="space-y-4">
                             {currentUser.orders.map((order) => (
-                              <div key={order.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                              <div
+                                key={order.id}
+                                className="flex justify-between items-center p-4 bg-gray-50 rounded-lg"
+                              >
                                 <div>
-                                  <p className="font-medium">{order.productName}</p>
+                                  <p className="font-medium">
+                                    {order.productName}
+                                  </p>
                                   <p className="text-sm text-gray-500">
-                                    {new Date(order.createdAt).toLocaleDateString()}
+                                    {new Date(
+                                      order.createdAt
+                                    ).toLocaleDateString()}
                                   </p>
                                 </div>
                                 <div className="text-right">
-                                  <p className="font-medium">₹{order.amount}</p>
+                                  <p className="font-medium">
+                                    ₹{order.amount}
+                                  </p>
                                   <Button variant="ghost" size="sm">
                                     View Invoice
                                   </Button>
@@ -438,7 +442,9 @@ const Profile = () => {
                             ))}
                           </div>
                         ) : (
-                          <p className="text-gray-500">No billing history available</p>
+                          <p className="text-gray-500">
+                            No billing history available
+                          </p>
                         )}
                       </div>
                     </div>
