@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,14 +12,32 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Menu, X } from "lucide-react";
 import logo from '../../assets/logo.png';
+import { supabase } from "@/lib/supabase";
 
 const Navbar = () => {
   const { currentUser, logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
 
-  const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+   useEffect(() => {
+    const checkAdmin = async () => {
+      if (currentUser) {
+        const { data } = await supabase
+          .from("profiles")
+          .select("is_admin")
+          .eq("id", currentUser.id)
+          .single();
+        setIsAdmin(data?.is_admin === true);
+      } else {
+        setIsAdmin(false);
+      }
+    };
+    checkAdmin();
+  }, [currentUser]);
 
+  const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+  
   const handleLogout = async () => {
     await logout();
     navigate("/login");
@@ -59,11 +77,11 @@ const Navbar = () => {
             <Link to="/products" className="text-gray-600 hover:text-gray-900">
               Services
             </Link>
-            {currentUser?.role === "admin" && (
-              <Link to="/admin" className="text-gray-600 hover:text-gray-900">
-                Admin
-              </Link>
-            )}
+             {isAdmin && (
+            <Link to="/admin" className="text-primary font-semibold">
+               Admin Dashboard
+             </Link>
+              )}
             {currentUser ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
