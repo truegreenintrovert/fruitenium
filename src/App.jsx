@@ -20,9 +20,13 @@ import Terms from "@/pages/Terms";
 import AuthCallback from "@/pages/auth/callback";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AdminRoute from "@/components/AdminRoute";
+import { BrowserRouter as Router } from "react-router-dom";
+import ScrollToTop from "@/components/ui/ScrollToTop";
 
 const App = () => {
   return (
+    <>
+      <ScrollToTop />
     <Routes>
       <Route path="/" element={<Layout />}>
         <Route index element={<Home />} />
@@ -55,6 +59,7 @@ const App = () => {
         <Route path="auth/callback" element={<AuthCallback />} />
       </Route>
     </Routes>
+    </>
   );
 };
 

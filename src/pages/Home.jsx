@@ -3,6 +3,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import heroBanner from "@/assets/home-banner.jpeg";
 
 const Home = () => {
   return (
@@ -39,7 +40,7 @@ const Home = () => {
               <img  
                 className="rounded-lg shadow-2xl"
                 alt="Digital solutions showcase"
-               src="https://images.unsplash.com/photo-1648134859182-98df6e93ef58" />
+               src={heroBanner} />
             </motion.div>
           </div>
         </div>

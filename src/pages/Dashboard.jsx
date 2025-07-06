@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
-import OrderHistory from "./OrderHistory"; // Show order list in Orders tab
+import { Button } from "@/components/ui/button";
+import OrderHistory from "./OrderHistory";
 
 const Dashboard = () => {
   const { currentUser } = useAuth();
@@ -14,34 +16,59 @@ const Dashboard = () => {
   const [activeProjects, setActiveProjects] = useState(0);
   const [tickets, setTickets] = useState(0);
   const [recentOrders, setRecentOrders] = useState([]);
+  const [fullName, setFullName] = useState("");
+  const navigate = useNavigate();
+
+  // Fetch user's full_name from profiles table
+  useEffect(() => {
+    const fetchFullName = async () => {
+      if (currentUser && currentUser.id) {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", currentUser.id)
+          .single();
+
+        if (error) {
+          console.warn("Supabase fetch full_name error:", error);
+        } else {
+          console.log("Supabase fetch full_name data:", data);
+        }
+
+        if (data && data.full_name && data.full_name.trim().length > 0) {
+          setFullName(data.full_name.trim());
+        } else {
+          setFullName("");
+        }
+      }
+    };
+    fetchFullName();
+  }, [currentUser]);
 
   useEffect(() => {
     if (currentUser) {
       fetchDashboardData();
     }
+    // eslint-disable-next-line
   }, [currentUser]);
 
   const fetchDashboardData = async () => {
-    // Orders count
     let { count: ordersCount, error: orderError } = await supabase
       .from("orders")
       .select("*", { count: "exact", head: true })
       .eq("user_id", currentUser.id);
 
-    // Active projects (assuming you have this table or logic)
     let { count: activeProjectsCount } = await supabase
       .from("projects")
       .select("*", { count: "exact", head: true })
       .eq("user_id", currentUser.id)
       .eq("status", "active");
 
-    // Tickets count (if you have support_tickets table)
     let { count: ticketCount } = await supabase
-      .from("support_tickets")
+      .from("tickets")
       .select("*", { count: "exact", head: true })
       .eq("user_id", currentUser.id);
 
-    // Recent orders
     let { data: orders, error: orderDataError } = await supabase
       .from("orders")
       .select("*")
@@ -71,7 +98,7 @@ const Dashboard = () => {
         transition={{ duration: 0.5 }}
       >
         <h1 className="text-3xl font-bold mb-8">
-          Welcome, {currentUser?.displayName || currentUser?.email || 'User'}!
+          Welcome, {fullName ? fullName : currentUser?.email}!
         </h1>
 
         <Tabs defaultValue="overview" className="space-y-4">
@@ -139,7 +166,6 @@ const Dashboard = () => {
           </TabsContent>
 
           <TabsContent value="orders">
-            {/* You can directly embed OrderHistory here or fetch/order inline */}
             <OrderHistory userId={currentUser?.id} />
           </TabsContent>
 
@@ -155,10 +181,19 @@ const Dashboard = () => {
                     <p className="text-gray-500">{currentUser?.email}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium">Name</label>
-                    <p className="text-gray-500">{currentUser?.displayName}</p>
+                    <label className="text-sm font-medium">Full Name</label>
+                    <p className="text-gray-500">
+                      {fullName ? fullName : <span className="italic text-gray-400">Not set</span>}
+                    </p>
+                  </div>
+                  <div>
+                    <Button onClick={() => navigate("/profile")}>
+                      Go to Profile
+                    </Button>
                   </div>
                 </div>
+                {/* Debug only: remove after confirming it works */}
+                {/* <div>Debug: {JSON.stringify({ id: currentUser?.id, fullName })}</div> */}
               </CardContent>
             </Card>
           </TabsContent>
