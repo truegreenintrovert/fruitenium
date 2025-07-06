@@ -7,12 +7,13 @@ import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 
-const EDGE_BASE = import.meta.env.VITE_SUPABASE_EDGE_URL;
+const EDGE_BASE = import.meta.env.VITE_SUPABASE_EDGE_URL; // <-- Set this in your .env!
 const CREATE_ORDER_URL = `${EDGE_BASE}/create-razorpay-order`;
 const VERIFY_PAYMENT_URL = `${EDGE_BASE}/verify-razorpay-payment`;
+const FIFTEEN_MIN = 15 * 60 * 1000;
 
-const loadRazorpay = () => {
-  return new Promise((resolve) => {
+const loadRazorpay = () =>
+  new Promise((resolve) => {
     if (window.Razorpay) return resolve(true);
     const script = document.createElement("script");
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
@@ -20,17 +21,25 @@ const loadRazorpay = () => {
     script.onerror = () => resolve(false);
     document.body.appendChild(script);
   });
-};
 
 const Checkout = () => {
   const { productId } = useParams();
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const { toast } = useToast();
+
   const [loading, setLoading] = useState(false);
   const [product, setProduct] = useState(null);
 
-  // Fetch product from Supabase
+  // Post-payment thank you screen
+  const [success, setSuccess] = useState(false);
+  const [orderInfo, setOrderInfo] = useState(null);
+
+  // For order reuse
+  const [orderData, setOrderData] = useState(null);
+  const [orderCreatedAt, setOrderCreatedAt] = useState(null);
+
+  // Fetch product
   useEffect(() => {
     const fetchProduct = async () => {
       const { data, error } = await supabase
@@ -53,7 +62,7 @@ const Checkout = () => {
     // eslint-disable-next-line
   }, [productId]);
 
-  // Handle "must be logged in"
+  // Require login
   useEffect(() => {
     if (!currentUser) {
       toast({
@@ -74,7 +83,7 @@ const Checkout = () => {
     );
   }
 
-  // Razorpay payment handler
+  // Payment handler with 15min window for order reuse
   const handlePayment = async () => {
     setLoading(true);
     try {
@@ -88,42 +97,62 @@ const Checkout = () => {
         setLoading(false);
         return;
       }
-        // --- get the current user access token for auth header ---
-        const { data: { session } } = await supabase.auth.getSession();
-        const accessToken = session?.access_token;
 
-      // 1. Create order with Supabase Edge Function
-      const orderRes = await fetch(CREATE_ORDER_URL, {
-        method: "POST",
-        headers: {
+      let finalOrderData = orderData;
+      const now = Date.now();
+      const isOrderValid =
+        finalOrderData && orderCreatedAt && now - orderCreatedAt < FIFTEEN_MIN;
+
+      // Always get user token
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+
+      // If order is not valid or not present, create new order
+      if (!isOrderValid) {
+        const orderRes = await fetch(CREATE_ORDER_URL, {
+          method: "POST",
+          headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${accessToken}`
+            "Authorization": `Bearer ${accessToken}`,
           },
-        body: JSON.stringify({
-          amount: product.price, // amount in rupees
-          productId: product.id,
-          userId: currentUser.id,
-        }),
-      });
-      const orderData = await orderRes.json();
-
-      if (!orderData?.order_id) {
-        throw new Error(orderData?.error || "Could not create order");
+          body: JSON.stringify({
+            amount: product.price,
+            productId: product.id,
+            userId: currentUser.id,
+          }),
+        });
+        finalOrderData = await orderRes.json();
+        if (!finalOrderData?.order_id) {
+          toast({
+            variant: "destructive",
+            title: "Order creation failed",
+            description: finalOrderData?.error || "Could not create order",
+          });
+          setLoading(false);
+          return;
+        }
+        setOrderData(finalOrderData);
+        setOrderCreatedAt(now);
       }
 
-      // 2. Launch Razorpay checkout
+      // Razorpay checkout
       const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        key: finalOrderData.key_id,
         amount: product.price * 100,
         currency: "INR",
         name: "Fruitenium Technologies",
         description: `Payment for ${product.name}`,
-        order_id: orderData.order_id,
+        order_id: finalOrderData.order_id,
         handler: async function (response) {
-          // 3. Verify payment with Supabase Edge Function
+          // Verify payment (send Authorization)
+          const { data: { session } } = await supabase.auth.getSession();
+          const accessToken = session?.access_token;
           const verifyRes = await fetch(VERIFY_PAYMENT_URL, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${accessToken}`,
+            },
             body: JSON.stringify({
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_order_id: response.razorpay_order_id,
@@ -135,11 +164,13 @@ const Checkout = () => {
           });
           const verifyData = await verifyRes.json();
           if (verifyData.success) {
-            toast({
-              title: "Payment successful!",
-              description: "Your order has been placed.",
+            setSuccess(true);
+            setOrderInfo({
+              productName: product.name,
+              amount: product.price,
+              paymentId: response.razorpay_payment_id,
+              orderId: response.razorpay_order_id,
             });
-            navigate("/dashboard");
           } else {
             toast({
               variant: "destructive",
@@ -149,7 +180,7 @@ const Checkout = () => {
           }
         },
         prefill: {
-          name: currentUser.displayName,
+          name: currentUser.displayName || currentUser.full_name || "",
           email: currentUser.email,
         },
         theme: { color: "#4F46E5" },
@@ -168,6 +199,28 @@ const Checkout = () => {
     }
   };
 
+  // Success screen
+  if (success) {
+    return (
+      <div className="container mx-auto px-4 py-8 flex justify-center items-center">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="bg-white p-8 rounded shadow max-w-lg w-full text-center"
+        >
+          <h1 className="text-3xl font-bold text-green-600 mb-4">Payment Successful!</h1>
+          <p className="mb-2 text-lg">Thank you for your purchase of <b>{orderInfo?.productName}</b>.</p>
+          <p className="mb-2">Order Amount: <b>₹{orderInfo?.amount}</b></p>
+          <p className="mb-2">Payment ID: <b>{orderInfo?.paymentId}</b></p>
+          <p className="mb-6 text-gray-500">We’ve received your payment and will be in touch soon.</p>
+          <Button onClick={() => navigate("/dashboard")}>Go to Dashboard</Button>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Main checkout UI
   return (
     <div className="container mx-auto px-4 py-8">
       <motion.div
@@ -190,9 +243,15 @@ const Checkout = () => {
                 <div>
                   <h4 className="font-medium">Features:</h4>
                   <ul className="list-disc pl-5 mt-2 space-y-1">
-                    {product.features?.map((feature, index) => (
-                      <li key={index} className="text-gray-600">{feature}</li>
-                    ))}
+                    {Array.isArray(product.features)
+                      ? product.features.map((feature, index) => (
+                          <li key={index} className="text-gray-600">{feature}</li>
+                        ))
+                      : typeof product.features === "object" && product.features
+                      ? Object.entries(product.features).map(([key, value], idx) => (
+                          <li key={idx} className="text-gray-600">{key}: {value}</li>
+                        ))
+                      : null}
                   </ul>
                 </div>
                 <div className="pt-4 border-t">

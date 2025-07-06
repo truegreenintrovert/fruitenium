@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { motion } from "framer-motion";
 import { useToast } from "@/components/ui/use-toast";
+import logo from "@/assets/logo.png";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -56,7 +57,7 @@ const Login = () => {
         <div>
           <img
             className="mx-auto h-16 w-16"
-            src="../assets/logo.png"
+            src={logo}
             alt="Fruitenium Technologies"
           />
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
