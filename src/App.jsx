@@ -20,8 +20,9 @@ import Terms from "@/pages/Terms";
 import AuthCallback from "@/pages/auth/callback";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AdminRoute from "@/components/AdminRoute";
-import { BrowserRouter as Router } from "react-router-dom";
 import ScrollToTop from "@/components/ui/ScrollToTop";
+import { useAuth } from "@/contexts/AuthContext";
+import { Navigate } from "react-router-dom";
 
 const App = () => {
   return (
@@ -57,6 +58,7 @@ const App = () => {
         <Route path="cancellation-policy" element={<CancellationPolicy />} />
         <Route path="terms" element={<Terms />} />
         <Route path="auth/callback" element={<AuthCallback />} />
+        
       </Route>
     </Routes>
     </>

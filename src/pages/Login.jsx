@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth} from "@/contexts/AuthContext";
 import { motion } from "framer-motion";
 import { useToast } from "@/components/ui/use-toast";
 import logo from "@/assets/logo.png";
