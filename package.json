@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "vercel-build": "npm install --legacy-peer-deps && npm run build",
     "dev": "vite",
     "build": "vite build",
+    "vercel-build": "npm install --legacy-peer-deps && npm run build",
     "preview": "vite preview"
   },
   "dependencies": {
