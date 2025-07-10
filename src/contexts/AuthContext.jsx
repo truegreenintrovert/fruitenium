@@ -2,7 +2,6 @@ import React, { createContext, useContext, useState, useEffect, useRef } from "r
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/use-toast";
 
-// Create context
 const AuthContext = createContext();
 
 function useAuth() {
@@ -15,7 +14,6 @@ function AuthProvider({ children }) {
   const { toast } = useToast();
   const inactivityTimeout = useRef();
 
-  // Auto-logout after 30min inactivity
   useEffect(() => {
     function resetInactivityTimer() {
       if (inactivityTimeout.current) clearTimeout(inactivityTimeout.current);
@@ -29,42 +27,42 @@ function AuthProvider({ children }) {
         window.location.reload();
       }, 30 * 60 * 1000); // 30 minutes
     }
+
     window.addEventListener("mousemove", resetInactivityTimer);
     window.addEventListener("keydown", resetInactivityTimer);
     resetInactivityTimer();
+
     return () => {
       if (inactivityTimeout.current) clearTimeout(inactivityTimeout.current);
       window.removeEventListener("mousemove", resetInactivityTimer);
       window.removeEventListener("keydown", resetInactivityTimer);
     };
-    // eslint-disable-next-line
   }, []);
 
-  // Session restore and listener
   useEffect(() => {
-  
-    supabase.auth.getSession().then(async ({ data, error }) => {
-      // data is an object: { session }
-      console.log("Session result:", data?.session, error);
+    const restoreSession = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        console.log("Session result:", data?.session, error);
 
-      if (error) {
-        console.error("Error getting session:", error);
+        if (error) {
+          console.error("Error getting session:", error);
+          setCurrentUser(null);
+        } else if (data?.session?.user) {
+          await fetchUserProfile(data.session.user);
+        } else {
+          setCurrentUser(null);
+        }
+      } catch (err) {
+        console.error("Unexpected error restoring session:", err);
         setCurrentUser(null);
+      } finally {
         setLoading(false);
-        return;
       }
+    };
 
-      const session = data?.session;
+    restoreSession();
 
-      if (session?.user) {
-        await fetchUserProfile(session.user);
-      } else {
-        setCurrentUser(null);
-      }
-      setLoading(false);
-    });
-
-    // Listen for login/logout/refresh
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         console.log("Auth state change event:", _event, session);
@@ -79,13 +77,10 @@ function AuthProvider({ children }) {
     return () => {
       subscription.unsubscribe();
     };
-    // eslint-disable-next-line
   }, []);
 
-  // Fetch/create user profile in "profiles" table
   const fetchUserProfile = async (user) => {
     try {
-      console.log("Fetching profile for user:", user.id);
       const { data: profile, error } = await supabase
         .from("profiles")
         .select("*")
@@ -93,7 +88,6 @@ function AuthProvider({ children }) {
         .single();
 
       if (error) {
-        // If no profile, create one
         if (error.code === "PGRST116") {
           const { data: newProfile, error: createError } = await supabase
             .from("profiles")
@@ -111,6 +105,7 @@ function AuthProvider({ children }) {
         }
         throw error;
       }
+
       setCurrentUser({ ...user, ...profile });
     } catch (error) {
       console.error("Error fetching user profile:", error);
@@ -123,7 +118,6 @@ function AuthProvider({ children }) {
     }
   };
 
-  // Update profile
   const updateProfile = async (userData) => {
     try {
       const { data, error } = await supabase
@@ -154,7 +148,6 @@ function AuthProvider({ children }) {
 
       return data;
     } catch (error) {
-      console.error("Error updating profile:", error);
       toast({
         variant: "destructive",
         title: "Profile update failed",
@@ -164,7 +157,6 @@ function AuthProvider({ children }) {
     }
   };
 
-  // Google sign-in
   async function signInWithGoogle() {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
@@ -188,21 +180,20 @@ function AuthProvider({ children }) {
     }
   }
 
-  // Email signup
   async function signup(email, password, name) {
     try {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          data: { full_name: name },
-        },
+        options: { data: { full_name: name } },
       });
       if (authError) throw authError;
+
       toast({
         title: "Account created!",
         description: "Check your email for verification.",
       });
+
       return authData;
     } catch (error) {
       toast({
@@ -214,7 +205,6 @@ function AuthProvider({ children }) {
     }
   }
 
-  // Email login
   async function login(email, password) {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -223,10 +213,12 @@ function AuthProvider({ children }) {
       });
       if (error) throw error;
       await fetchUserProfile(data.user);
+
       toast({
         title: "Welcome!",
         description: "You are now logged in.",
       });
+
       return data;
     } catch (error) {
       toast({
@@ -238,7 +230,6 @@ function AuthProvider({ children }) {
     }
   }
 
-  // Logout
   async function logout() {
     try {
       const { error } = await supabase.auth.signOut();
@@ -271,7 +262,7 @@ function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{currentUser, ...value}}>
       {!loading ? children : (
         <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <span>Loading...</span>
